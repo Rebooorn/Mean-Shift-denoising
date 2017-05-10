@@ -8,13 +8,19 @@
 using namespace cv;
 using namespace std;
 
-const double delta = 2;
+const double delta = 0.1;
 
-struct fsPoint
+struct fsPoint		
 {
+	//feature vector: spatial(xs,ys), range(g,x,y)
+	int xs = 0;
+	int ys = 0;
 	double g = 0;
 	double x = 0;
 	double y = 0;
+	void set(int xs1 = 0; int ys1 = 0; double g1=0; double x1=0; double y1=0){
+		xs=xs1; ys=ys1; g=g1; x=x1; y=y1;
+	}
 };
 
 class featureSpace {
@@ -72,9 +78,14 @@ double featureSpace::mean_shift(int X, int Y) {
 			}
 		}
 		//xp.g /= tmpU;
-		xp.x = xp.x / tmpU;
-		xp.y = xp.y / tmpU;
-		if (isConvergent(xf, xp) || counter>40) break;
+		if(tmpU==0){
+			xp.x=0;
+			xp.y=0;
+		}else{
+			xp.x = xp.x / tmpU;
+			xp.y = xp.y / tmpU;
+		}
+		if (isConvergent(xf, xp) || counter>80) break;
 		// otherwise reload xf, erase xp
 		//xf.g = xp.g;
 		xf.x = xp.x;
@@ -94,20 +105,20 @@ double featureSpace::kernel(int X, int Y, int Xc, int Yc) {
 	// use Epanechnikov kernal
 	// kernel only applied to gray value channel!!
 	//double dist = abs(getGrayValue(X, Y) - getGrayValue(Xc, Yc));
-	cout<<"pl1: "<<X<<" "<<Y<<" "<<Xc<<" "<<Yc<<endl;
+	//cout<<"pl1: "<<X<<" "<<Y<<" "<<Xc<<" "<<Yc<<endl;
 	double dist = sqrt(1.0*(X - Xc)*(X - Xc) + 
 						1.0*(Y - Yc)*(Y - Yc)+
 						1.0*(getGrayValue(X/2, Y/2) - getGrayValue(Xc/2, Yc/2))*(getGrayValue(X/2, Y/2) - getGrayValue(Xc/2, Yc/2))
 					  );
 	//if (dist < hr) return 1.0;
-	cout<< "kernel calculation success"<<endl;
+	//cout<< "kernel calculation success"<<endl;
 	if (dist < hr) return 3.0/2.0*(dist/hr);
 	else return 0.0;
 }
 
 double featureSpace::getGrayValue(int X, int Y) {
 	//return gray value of (X,Y)
-	cout<< "pl2: " <<X<<" "<<Y<<endl;
+	//cout<< "pl2: " <<X<<" "<<Y<<endl;
 	uchar* data = gray_value.ptr<uchar>(X);
 	return data[Y];
 }
@@ -139,9 +150,9 @@ int main(int argc, char* argv[]) {
 	namedWindow("origin", WINDOW_NORMAL);
 	//namedWindow("origin", WINDOW_AUTOSIZE);
 	imshow("origin", img);
-	//cout << "gray-value:" << endl << img << endl;
+	cout << "gray-value:" << endl << img << endl;
 	
-	featureSpace fs(img, 8, 32);
+	featureSpace fs(img, 8, 6);
 	Mat denoiseImg(img.rows, img.cols, img.type());
 	// apply mean-shift
 	for (int i = 0;i < img.cols;i++) {
