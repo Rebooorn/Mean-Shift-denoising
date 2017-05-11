@@ -47,6 +47,11 @@ featureSpace::featureSpace(Mat& gv, int hspatial, double hrange) {
 	//gray_value /= 256;
 	hs = hspatial;
 	hr = hrange;
+	//generate feature space
+	for(int i=0; i<rows; i++){
+		uchar 
+		for(int j=0; j<cols; j++){
+			
 }
 
 double featureSpace::mean_shift(int X, int Y) {
