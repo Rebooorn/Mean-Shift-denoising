@@ -13,13 +13,11 @@ const double delta = 0.1;
 struct fsPoint		
 {
 	//feature vector: spatial(xs,ys), range(g,x,y)
-	double xs = 0;
-	double ys = 0;
 	double g = 0;
 	double x = 0;
 	double y = 0;
-	void set(double xs1 = 0, double ys1 = 0, double g1=0, double x1=0, double y1=0){
-		xs=xs1; ys=ys1; g=g1; x=x1; y=y1;
+	void set(double g1=0, double x1=0, double y1=0){
+		g=g1; x=x1; y=y1;
 	}
 };
 
@@ -70,7 +68,6 @@ double featureSpace::mean_shift(int X, int Y) {
 		int ymax = xf.y + hs < rows ? (xf.y + hs) : rows;
 		counter++;
 		for (int i = xmin;i < xmax;i++) {		 //optimization: to reduce iteration times
-			//uchar* g = gray_value.ptr<uchar>(i); //pointor to gray value
 			for (int j = ymin;j < ymax;j++) {
 				xp.x += i*kernel(i, j, (int)xf.x, (int)xf.y);
 				xp.y += j*kernel(i, j, (int)xf.x, (int)xf.y);
@@ -101,16 +98,14 @@ double featureSpace::mean_shift(int X, int Y) {
 	
 }
 
-double featureSpace::kernel(int X, int Y, int Xc, int Yc) {
+double featureSpace::kernel(fsPoint X, fsPoint Xc) {
 	// use Epanechnikov kernal
 	// kernel only applied to gray value channel!!
 	//double dist = abs(getGrayValue(X, Y) - getGrayValue(Xc, Yc));
 	//cout<<"pl1: "<<X<<" "<<Y<<" "<<Xc<<" "<<Yc<<endl;
 	
 	fsPoint tmp;
-	tmp.x = 2.0*(X - Xc)/hr;
-	tmp.y = 2.0*(Y - Yc)/hr;
-	tmp.g = 1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))/hr;
+	tmp.set(X.g-Xc.g, X.x-Xc.x, X.y-Xc.y);
 	double dist = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.g*tmp.g);
 	
 	
@@ -121,7 +116,7 @@ double featureSpace::kernel(int X, int Y, int Xc, int Yc) {
 	//if (dist < hr) return 1.0;
 	//cout<< "kernel calculation success"<<endl;
 
-	if (dist < 1) return 1.5*dist;
+	if (dist < 1) return 1.0;
 	else return 0.0;
 }
 
