@@ -13,12 +13,12 @@ const double delta = 0.1;
 struct fsPoint		
 {
 	//feature vector: spatial(xs,ys), range(g,x,y)
-	int xs = 0;
-	int ys = 0;
+	double xs = 0;
+	double ys = 0;
 	double g = 0;
 	double x = 0;
 	double y = 0;
-	void set(int xs1 = 0; int ys1 = 0; double g1=0; double x1=0; double y1=0){
+	void set(double xs1 = 0, double ys1 = 0, double g1=0, double x1=0, double y1=0){
 		xs=xs1; ys=ys1; g=g1; x=x1; y=y1;
 	}
 };
@@ -58,34 +58,34 @@ double featureSpace::mean_shift(int X, int Y) {
 	double tmpU = 0; //temp for dominator
 	fsPoint xp;	//x prime
 	fsPoint xf; //x former
+	xf.set(X, Y);
 	xf.g = getGrayValue(X, Y);
 	xf.x = X*2;		//for normalizing to 0-256
 	xf.y = Y*2;
 	while(1){
 		// set ROI for speeding up calculation
-		int xmin = xf.x/2 - hs > 0 ? (xf.x/2 - hs) : 0;
-		int xmax = xf.x/2 + hs < cols ? (xf.x/2 + hs) : cols;
-		int ymin = xf.y/2 - hs > 0 ? (xf.y/2 - hs) : 0;
-		int ymax = xf.y/2 + hs < rows ? (xf.y/2 + hs) : rows;
+		int xmin = xf.xs - hs > 0 ? (xf.xs - hs) : 0;
+		int xmax = xf.xs + hs < cols ? (xf.xs+ hs) : cols;
+		int ymin = xf.ys - hs > 0 ? (xf.ys - hs) : 0;
+		int ymax = xf.ys + hs < rows ? (xf.ys + hs) : rows;
 		counter++;
 		for (int i = xmin;i < xmax;i++) {		 //optimization: to reduce iteration times
 			//uchar* g = gray_value.ptr<uchar>(i); //pointor to gray value
 			for (int j = ymin;j < ymax;j++) {
-				//xp.g += kernel(i, j, xf.x, xf.y)*g[j];
-				xp.x += 2*i*kernel(2*i, 2*j, xf.x, xf.y);
-				xp.y += 2*j*kernel(2*i, 2*j, xf.x, xf.y);
-				tmpU += kernel(2*i, 2*j, xf.x, xf.y);
+				xp.x += i*kernel(i, j, xf.x, xf.ys);
+				xp.y += j*kernel(i, j, xf.x, xf.ys);
+				tmpU += kernel(i, j, xf.xs, xf.ys);
 			}
 		}
 		//xp.g /= tmpU;
 		if(tmpU==0){
-			xp.x=0;
-			xp.y=0;
+			xp.x=xf.x;
+			xp.y=xf.y;
 		}else{
 			xp.x = xp.x / tmpU;
 			xp.y = xp.y / tmpU;
 		}
-		if (isConvergent(xf, xp) || counter>80) break;
+		if (isConvergent(xf, xp) || counter>40) break;
 		// otherwise reload xf, erase xp
 		//xf.g = xp.g;
 		xf.x = xp.x;
@@ -95,7 +95,7 @@ double featureSpace::mean_shift(int X, int Y) {
 		xp.y = 0;
 		tmpU = 0;
 	}
-	cout<<counter<<" [ "<<xp.x/2<<", "<<xp.y/2<<" ]"<<endl;
+	//cout<<counter<<" [ "<<xp.x/2<<", "<<xp.y/2<<" ]"<<endl;
 	return getGrayValue(xp.x/2,xp.y/2);
 	//return xp.g*(256 / rows);
 	
@@ -106,13 +106,22 @@ double featureSpace::kernel(int X, int Y, int Xc, int Yc) {
 	// kernel only applied to gray value channel!!
 	//double dist = abs(getGrayValue(X, Y) - getGrayValue(Xc, Yc));
 	//cout<<"pl1: "<<X<<" "<<Y<<" "<<Xc<<" "<<Yc<<endl;
+	/*
+	fsPoint tmp;
+	tmp.x = 2.0*(X - Xc)/hr;
+	tmp.y = 2.0*(Y - Yc)/hr;
+	tmp.g = 1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))/hr;
+	double dist = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.g*tmp.g);
+	*/
+	
 	double dist = sqrt(1.0*(X - Xc)*(X - Xc) + 
 						1.0*(Y - Yc)*(Y - Yc)+
-						1.0*(getGrayValue(X/2, Y/2) - getGrayValue(Xc/2, Yc/2))*(getGrayValue(X/2, Y/2) - getGrayValue(Xc/2, Yc/2))
+						1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))
 					  );
-	//if (dist < hr) return 1.0;
+	if (dist < hr) return 1.0;
 	//cout<< "kernel calculation success"<<endl;
-	if (dist < hr) return 3.0/2.0*(dist/hr);
+
+	//if (dist < 1) return 1.5*dist;
 	else return 0.0;
 }
 
@@ -152,7 +161,7 @@ int main(int argc, char* argv[]) {
 	imshow("origin", img);
 	cout << "gray-value:" << endl << img << endl;
 	
-	featureSpace fs(img, 8, 6);
+	featureSpace fs(img, 8, 32);
 	Mat denoiseImg(img.rows, img.cols, img.type());
 	// apply mean-shift
 	for (int i = 0;i < img.cols;i++) {
