@@ -60,21 +60,21 @@ double featureSpace::mean_shift(int X, int Y) {
 	fsPoint xf; //x former
 	xf.set(X, Y);
 	xf.g = getGrayValue(X, Y);
-	xf.x = X*2;		//for normalizing to 0-256
-	xf.y = Y*2;
+	xf.x = X;		//for normalizing to 0-256
+	xf.y = Y;
 	while(1){
 		// set ROI for speeding up calculation
-		int xmin = xf.xs - hs > 0 ? (xf.xs - hs) : 0;
-		int xmax = xf.xs + hs < cols ? (xf.xs+ hs) : cols;
-		int ymin = xf.ys - hs > 0 ? (xf.ys - hs) : 0;
-		int ymax = xf.ys + hs < rows ? (xf.ys + hs) : rows;
+		int xmin = xf.x - hs > 0 ? (xf.x - hs) : 0;
+		int xmax = xf.x + hs < cols ? (xf.x + hs) : cols;
+		int ymin = xf.y - hs > 0 ? (xf.y - hs) : 0;
+		int ymax = xf.y + hs < rows ? (xf.y + hs) : rows;
 		counter++;
 		for (int i = xmin;i < xmax;i++) {		 //optimization: to reduce iteration times
 			//uchar* g = gray_value.ptr<uchar>(i); //pointor to gray value
 			for (int j = ymin;j < ymax;j++) {
-				xp.x += i*kernel(i, j, xf.x, xf.ys);
-				xp.y += j*kernel(i, j, xf.x, xf.ys);
-				tmpU += kernel(i, j, xf.xs, xf.ys);
+				xp.x += i*kernel(i, j, (int)xf.x, (int)xf.y);
+				xp.y += j*kernel(i, j, (int)xf.x, (int)xf.y);
+				tmpU += kernel(i, j, (int)xf.x, (int)xf.y);
 			}
 		}
 		//xp.g /= tmpU;
@@ -88,15 +88,15 @@ double featureSpace::mean_shift(int X, int Y) {
 		if (isConvergent(xf, xp) || counter>40) break;
 		// otherwise reload xf, erase xp
 		//xf.g = xp.g;
-		xf.x = xp.x;
-		xf.y = xp.y;
+		xf.x = round(xp.x);
+		xf.y = round(xp.y);
 		//xp.g = 0;
 		xp.x = 0;
 		xp.y = 0;
 		tmpU = 0;
 	}
-	//cout<<counter<<" [ "<<xp.x/2<<", "<<xp.y/2<<" ]"<<endl;
-	return getGrayValue(xp.x/2,xp.y/2);
+	cout<<counter<<" [ "<<xp.x<<", "<<xp.y<<" ]"<<endl;
+	return getGrayValue(xp.x,xp.y);
 	//return xp.g*(256 / rows);
 	
 }
@@ -106,22 +106,22 @@ double featureSpace::kernel(int X, int Y, int Xc, int Yc) {
 	// kernel only applied to gray value channel!!
 	//double dist = abs(getGrayValue(X, Y) - getGrayValue(Xc, Yc));
 	//cout<<"pl1: "<<X<<" "<<Y<<" "<<Xc<<" "<<Yc<<endl;
-	/*
+	
 	fsPoint tmp;
 	tmp.x = 2.0*(X - Xc)/hr;
 	tmp.y = 2.0*(Y - Yc)/hr;
 	tmp.g = 1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))/hr;
 	double dist = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.g*tmp.g);
-	*/
 	
-	double dist = sqrt(1.0*(X - Xc)*(X - Xc) + 
-						1.0*(Y - Yc)*(Y - Yc)+
-						1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))
-					  );
-	if (dist < hr) return 1.0;
+	
+	//double dist = sqrt(1.0*(X - Xc)*(X - Xc) + 
+	//					1.0*(Y - Yc)*(Y - Yc)+
+	//					1.0*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))*(getGrayValue(X, Y) - getGrayValue(Xc, Yc))
+	//				  );
+	//if (dist < hr) return 1.0;
 	//cout<< "kernel calculation success"<<endl;
 
-	//if (dist < 1) return 1.5*dist;
+	if (dist < 1) return 1.5*dist;
 	else return 0.0;
 }
 
@@ -136,7 +136,6 @@ bool featureSpace::isConvergent(fsPoint xp, fsPoint xf) {
 	//x prime and x former
 	// if Euclidian distance minor than delta
 	fsPoint tmp;
-	//tmp.g = xp.g - xf.g;
 	tmp.x = xp.x - xf.x;
 	tmp.y = xp.y - xf.y;
 //	if (sqrt(tmp.g*tmp.g + tmp.x*tmp.x + tmp.y*tmp.y) < delta)
@@ -161,7 +160,7 @@ int main(int argc, char* argv[]) {
 	imshow("origin", img);
 	cout << "gray-value:" << endl << img << endl;
 	
-	featureSpace fs(img, 8, 32);
+	featureSpace fs(img, 8, 4);
 	Mat denoiseImg(img.rows, img.cols, img.type());
 	// apply mean-shift
 	for (int i = 0;i < img.cols;i++) {
